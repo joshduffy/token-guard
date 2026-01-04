@@ -89,7 +89,63 @@ Create `~/.token-guard.json` for persistent settings:
 
 - Claude Code (`claude`)
 - Aider (`aider`)
+- Gas Town (`gt`) - multi-agent orchestrator
 - Any CLI tool that streams text output
+
+## Gas Town Integration
+
+[Gas Town](https://github.com/steveyegge/gastown) is a multi-agent orchestrator that can spawn 20-30 concurrent Claude agents. Token monitoring is **critical** when running multiple agents.
+
+### Setup
+
+Create a wrapper script `~/bin/gt-guard`:
+
+```bash
+#!/bin/bash
+# Wrapper for Gas Town that activates token-guard for Claude operations
+
+export PATH=$PATH:$(go env GOPATH)/bin
+
+# Commands that spawn Claude agents - wrap with token-guard
+CLAUDE_CMDS="mayor polecat sling hook resume handoff"
+
+CMD="$1"
+
+if echo "$CLAUDE_CMDS" | grep -qw "$CMD"; then
+    echo "[token-guard] Monitoring enabled for gt $CMD"
+    token-guard -- gt "$@"
+else
+    gt "$@"
+fi
+```
+
+Then add to `~/.zshrc`:
+
+```bash
+export PATH="$HOME/bin:$PATH"
+alias gt="gt-guard"
+```
+
+### Usage with Gas Town
+
+```bash
+# All Claude-spawning commands automatically monitored
+gt mayor attach           # Mayor session with monitoring
+gt sling issue-123 myrig  # Polecat spawn with monitoring
+gt polecat list           # Non-Claude command passes through
+
+# Set global budget for multi-agent work
+token-guard -b 500000 -- gt convoy create "Feature X" issue-1 issue-2
+```
+
+### Multi-Agent Cost Tracking
+
+When running multiple polecats, each agent's usage is tracked separately. Use the `--output` flag to aggregate:
+
+```bash
+# Track convoy-level costs
+token-guard -o convoy-costs.json -- gt convoy run feature-convoy
+```
 
 ## Output Example
 
